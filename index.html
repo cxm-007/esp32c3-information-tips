@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="ESP32-C3 信息显示器：240×240 桌面小屏，股票 / ETF / 指数 / 港股 / 美股 / 黄金 / 场外基金 / B 站热搜 一屏掌握。5 种主题、30 日真实 K 线、网页配网、网页 OTA、随货附激活码、Chrome 一键烧录。">
+  <meta name="theme-color" content="#0d1117">
+  <title>ESP32-C3 信息显示器 · 桌面实时看盘小屏</title>
+  <link rel="icon" type="image/png" href="assets/cover.png">
+  <style>
+    :root {
+      --bg:        #0d1117;
+      --bg-card:   #161b22;
+      --bg-card2:  #1c2128;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --text-dim:  #7d8590;
+      --accent:    #58a6ff;
+      --accent-2:  #f78166;
+      --up:        #ff7b72;
+      --down:      #3fb950;
+      --link:      #79c0ff;
+      --max-w:     1120px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Microsoft YaHei", "Noto Sans CJK SC", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.65;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; display: block; }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      background: var(--bg-card2); padding: 1px 6px; border-radius: 4px; font-size: 0.9em;
+    }
+    /* ===== Nav ===== */
+    .nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,17,23,0.85); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: var(--max-w); margin: 0 auto; padding: 14px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .nav-brand { font-weight: 600; font-size: 16px; color: var(--text); white-space: nowrap; }
+    .nav-links { display: flex; gap: 22px; flex-wrap: wrap; }
+    .nav-links a { color: var(--text-dim); font-size: 14px; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+    .nav-cta {
+      background: var(--accent); color: #0d1117; font-weight: 600;
+      padding: 7px 14px; border-radius: 6px; font-size: 13px;
+    }
+    .nav-cta:hover { background: #79c0ff; text-decoration: none; }
+    @media (max-width: 640px) {
+      .nav-inner { padding: 10px 16px; }
+      .nav-links { display: none; }
+    }
+    /* ===== Hero ===== */
+    .hero {
+      padding: 64px 24px 48px;
+      background:
+        radial-gradient(ellipse at top, rgba(88,166,255,0.10), transparent 60%),
+        var(--bg);
+    }
+    .hero-inner { max-width: var(--max-w); margin: 0 auto; }
+    .hero h1 {
+      font-size: clamp(28px, 5vw, 44px); margin: 0 0 12px; font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .hero-sub {
+      color: var(--text-dim); font-size: clamp(15px, 2vw, 18px);
+      margin: 0 0 28px; max-width: 720px;
+    }
+    .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 40px; }
+    .btn {
+      display: inline-block; padding: 11px 22px; border-radius: 8px;
+      font-weight: 600; font-size: 15px; border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #0d1117; }
+    .btn-primary:hover { background: #79c0ff; text-decoration: none; }
+    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
+    .btn-ghost:hover { border-color: var(--text-dim); text-decoration: none; }
+    .hero-img {
+      border-radius: 12px; overflow: hidden; border: 1px solid var(--border);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .hero-img + .hero-img { margin-top: 20px; }
+    .hero-img img { width: 100%; height: auto; }
+    .hero-cap { color: var(--text-dim); font-size: 12px; text-align: center; margin-top: 10px; }
+    /* ===== Section ===== */
+    section { padding: 64px 24px; }
+    .sec-inner { max-width: var(--max-w); margin: 0 auto; }
+    .sec-h {
+      font-size: clamp(22px, 3.5vw, 30px); font-weight: 700; margin: 0 0 8px;
+    }
+    .sec-sub { color: var(--text-dim); margin: 0 0 36px; max-width: 680px; }
+    .sec-bg-alt { background: var(--bg-card); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    /* ===== Cards ===== */
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--bg-card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 22px 24px;
+    }
+    .card-h { font-size: 16px; font-weight: 600; margin: 0 0 8px; color: var(--text); }
+    .card-h .tag { font-size: 11px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; vertical-align: middle; font-weight: 500; }
+    .tag-up   { background: rgba(255,123,114,0.15); color: var(--up); }
+    .tag-down { background: rgba(63,185,80,0.15); color: var(--down); }
+    .tag-acc  { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .card p { margin: 6px 0; color: var(--text-dim); font-size: 14px; }
+    .card ul { margin: 8px 0 0; padding-left: 20px; color: var(--text-dim); font-size: 14px; }
+    .card ul li { margin: 4px 0; }
+    .card ul li.no::marker { color: var(--text-dim); }
+    .card ul li.no { color: var(--text-dim); }
+    /* ===== Theme gallery ===== */
+    .themes {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;
+    }
+    .theme {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .theme img { width: 100%; height: auto; background: #000; }
+    .theme-cap { padding: 14px 16px; }
+    .theme-cap h4 { margin: 0 0 4px; font-size: 15px; }
+    .theme-cap p  { margin: 0; color: var(--text-dim); font-size: 13px; }
+    /* ===== Spec table ===== */
+    table.spec {
+      width: 100%; border-collapse: collapse;
+      background: var(--bg-card2); border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    table.spec th, table.spec td {
+      padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+    table.spec tr:last-child th, table.spec tr:last-child td { border-bottom: 0; }
+    table.spec th {
+      background: var(--bg-card); color: var(--text-dim); font-weight: 500;
+      width: 38%;
+    }
+    table.spec td { color: var(--text); }
+    /* ===== Steps ===== */
+    .steps { counter-reset: s; display: grid; gap: 14px; }
+    .step {
+      background: var(--bg-card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 22px;
+      display: grid; grid-template-columns: 36px 1fr; gap: 14px; align-items: start;
+    }
+    .step::before {
+      counter-increment: s; content: counter(s);
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--accent); color: #0d1117; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step h4 { margin: 2px 0 6px; font-size: 15px; }
+    .step p  { margin: 0; color: var(--text-dim); font-size: 14px; }
+    /* ===== FAQ ===== */
+    .faq-item {
+      background: var(--bg-card2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px 22px; margin-bottom: 10px;
+    }
+    .faq-q { font-weight: 600; margin: 0 0 8px; font-size: 15px; }
+    .faq-a { margin: 0; color: var(--text-dim); font-size: 14px; }
+    .faq-a code { font-size: 0.85em; }
+    /* ===== Foot ===== */
+    .foot {
+      border-top: 1px solid var(--border); padding: 36px 24px;
+      color: var(--text-dim); font-size: 13px;
+    }
+    .foot-inner { max-width: var(--max-w); margin: 0 auto; }
+    .foot p { margin: 6px 0; }
+    .foot a { color: var(--text-dim); }
+    .foot a:hover { color: var(--text); }
+    /* ===== Banner (flash / buy 共用) ===== */
+    .banner {
+      background: linear-gradient(135deg, rgba(88,166,255,0.12), rgba(247,129,102,0.08));
+      border: 1px solid var(--border); border-radius: 12px;
+      padding: 28px 32px; display: flex; flex-wrap: wrap; gap: 20px;
+      align-items: center; justify-content: space-between;
+    }
+    .banner h3 { margin: 0 0 6px; font-size: 20px; }
+    .banner p { margin: 0; color: var(--text-dim); font-size: 14px; }
+    .banner .btn { flex-shrink: 0; }
+    /* ===== Contact card (QR + text) ===== */
+    .contact-card {
+      background: var(--bg-card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 24px;
+      align-items: center;
+      margin: 20px 0;
+    }
+    .contact-card .qr {
+      width: 180px;
+      height: auto;
+      border-radius: 8px;
+      background: #fff;
+      padding: 8px;
+    }
+    .contact-card h3 { margin: 0 0 8px; font-size: 18px; }
+    .contact-card p { margin: 6px 0; color: var(--text-dim); font-size: 14px; }
+    .contact-card .dim { font-size: 13px; }
+    @media (max-width: 560px) {
+      .contact-card { grid-template-columns: 1fr; text-align: center; }
+      .contact-card .qr { margin: 0 auto; }
+    }
+    /* ===== Misc ===== */
+    .sep { border-top: 1px dashed var(--border); margin: 28px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ===== Nav ===== -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-brand">ESP32-C3 信息显示器</div>
+    <div class="nav-links">
+      <a href="#themes">主题</a>
+      <a href="#features">功能</a>
+      <a href="#spec">规格</a>
+      <a href="#flash">烧录</a>
+      <a href="#start">上手</a>
+      <a href="#buy">怎么买</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="nav-cta" href="#buy">私聊询价 →</a>
+  </div>
+</nav>
+
+<!-- ===== Hero ===== -->
+<header class="hero">
+  <div class="hero-inner">
+    <h1>桌面小屏 · 一屏掌握实时行情</h1>
+    <p class="hero-sub">
+      基于 ESP32-C3 的 240×240 全彩桌面显示器：股票 / ETF / 指数 / 港股 / 美股 / 黄金 / 场外基金 / B 站热搜
+      全部一屏搞定。5 种主题随意切，30 日真实 K 线 + 盘中实时柱，网页配网、网页 OTA、Chrome 一键烧录。
+    </p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#buy">私聊询价</a>
+      <a class="btn btn-ghost" href="#start">查看上手指南</a>
+    </div>
+    <div class="hero-img">
+      <img src="assets/cover.png" alt="ESP32-C3 信息显示器 5 主题实拍示意">
+    </div>
+    <p class="hero-cap">主视觉截图（数据为 2026-09-02 真实收盘快照，非实时、仅供参考）</p>
+
+    <div class="hero-img">
+      <img src="assets/device_real.png" alt="ESP32-C3 信息显示器 实物样机 · 蓝/白/黄 三色可选">
+    </div>
+    <p class="hero-cap">实物样机 · 240×240 屏 + Type-C 供电 · 三色可选</p>
+  </div>
+</header>
+
+<!-- ===== Core ===== -->
+<section>
+  <div class="sec-inner">
+    <h2 class="sec-h">为什么做这个</h2>
+    <p class="sec-sub">盯盘不需要打开电脑、打开行情 App、还要登录。插着电摆在桌面上抬眼就是，比通知弹窗更直接、比手机 App 更不打扰。</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3 class="card-h">看得全 <span class="tag tag-acc">最多 8 项</span></h3>
+        <p>代码前缀自由区分市场，无需手动选类型：</p>
+        <ul>
+          <li><code>sh</code> / <code>sz</code> — A 股 · ETF · 指数</li>
+          <li><code>hk</code> — 港股（恒生、恒科）</li>
+          <li><code>us</code> — 美股（NDX、SPX）</li>
+          <li><code>jj</code> / <code>of</code> — 场外基金</li>
+          <li><code>hf</code> — 黄金 / 贵金属</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="card-h">看得懂 <span class="tag tag-acc">真实 K 线</span></h3>
+        <p>每只标的 30 日真实日 K（前复权 OHLC），非交易时段画历史 30 根，交易时段在右侧追加 1 根今日实时柱；场外基金画单位净值折线。屏上最多 31 列。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">省心 <span class="tag tag-acc">网页配置</span></h3>
+        <p>手机 / 电脑浏览器直接打开设备热点或局域网地址就能改：自选代码、主题、刷新间隔、滚动间隔、亮度、涨跌幅阈值、激活码、日志等级——全部免装 App。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Themes ===== -->
+<section id="themes" class="sec-bg-alt">
+  <div class="sec-inner">
+    <h2 class="sec-h">5 套主题 · 随时切换</h2>
+    <p class="sec-sub">列表 / 大图 / 放大列表 / 热搜 / 详情，覆盖不同看盘节奏：扫一眼 vs 死盯一支。</p>
+
+    <div class="themes">
+      <div class="theme">
+        <img src="assets/theme1_list.png" alt="主题 1 列表">
+        <div class="theme-cap">
+          <h4>主题 1 · 列表</h4>
+          <p>一屏 6 只，涨跌幅染色；适合通勤扫盘</p>
+        </div>
+      </div>
+      <div class="theme">
+        <img src="assets/theme2_big.png" alt="主题 2 大图">
+        <div class="theme-cap">
+          <h4>主题 2 · 大图</h4>
+          <p>单只 + 30 日 K 线 + 今日实时柱；适合死盯一支</p>
+        </div>
+      </div>
+      <div class="theme">
+        <img src="assets/theme3_zoom.png" alt="主题 3 放大列表">
+        <div class="theme-cap">
+          <h4>主题 3 · 放大列表</h4>
+          <p>一屏 3 只，大字号；适合工位远观</p>
+        </div>
+      </div>
+      <div class="theme">
+        <img src="assets/theme4_hot.png" alt="主题 4 热搜">
+        <div class="theme-cap">
+          <h4>主题 4 · 热搜</h4>
+          <p>B 站实时热搜滚动；休息区 / 前台话题</p>
+        </div>
+      </div>
+      <div class="theme">
+        <img src="assets/theme5_detail.png" alt="主题 5 详情">
+        <div class="theme-cap">
+          <h4>主题 5 · 详情</h4>
+          <p>全字段 7 行（开高低收、涨跌额、量、额、换手、市盈率）；适合深度研究</p>
+        </div>
+      </div>
+    </div>
+    <p style="color:var(--text-dim); font-size:12px; margin-top:18px;">
+      主题截图均为 2026-09-02 真实收盘数据快照渲染，非实时画面。
+    </p>
+  </div>
+</section>
+
+<!-- ===== Features ===== -->
+<section id="features">
+  <div class="sec-inner">
+    <h2 class="sec-h">功能一览</h2>
+    <p class="sec-sub">硬件虽小（一颗 ESP32-C3 + 一块 240×240 屏），能做的事比你想的多。</p>
+
+    <div class="grid-3">
+      <div class="card">
+        <h3 class="card-h">条件显示 <span class="tag tag-acc">阈值</span></h3>
+        <p>每只标的可单独设「跌多少才看」/「涨多少才看」的阈值，未触发自动隐藏——持仓夜里睡得着，设个涨 5% 才上屏就不会被洗出去吓醒。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">B 站热搜 <span class="tag tag-acc">自动轮播</span></h3>
+        <p>主题 4 自动拉 B 站热搜榜前 20 条滚动显示，热搜是聊话题时最便宜的"破冰素材"。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">滑块调控 <span class="tag tag-acc">热生效</span></h3>
+        <p>刷新间隔 / 滚动间隔 / 亮度全部用网页滑块调，保存即生效，无需重启。亮度范围 1–100，默认 80。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">网页 OTA <span class="tag tag-acc">A/B 防砖</span></h3>
+        <p>双分区升级：新固件写到另一分区，启动正常即标记有效；若新固件首轮崩溃，自动回滚到旧版，设备永远能救回。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">AP 配网 <span class="tag tag-acc">无屏也能配</span></h3>
+        <p>首次上电未配过网，设备自己开 <code>INFO-DISPLAY</code> 热点，手机连上即弹出配网页；也可通过长按 BOOT 重置。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">随货附激活码 <span class="tag tag-acc">全功能</span></h3>
+        <p>每台售出均附激活码，网页输入即解锁 8 只自选全功能。激活码本机离线算法校验，不依赖服务器。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">自动校时 <span class="tag tag-acc">免配置</span></h3>
+        <p>联网后自动 SNTP 校时，断网兜底用上游 HTTP 响应头 Date 取时间，时钟不用手动调。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">局域网鉴权 <span class="tag tag-acc">防蹭改</span></h3>
+        <p>配置提交 / OTA 推送 / 激活等写接口需带 <code>X-Token</code> 头（首次配网模式与读接口免鉴权），避免邻居蹭网乱改你的自选。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">开发工具页 <span class="tag tag-acc">/tools</span></h3>
+        <p>实时调日志等级（ERROR / WARN / INFO / DEBUG / VERBOSE）、查看运行状态、抓包调试，不用重新烧固件。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Spec ===== -->
+<section id="spec" class="sec-bg-alt">
+  <div class="sec-inner">
+    <h2 class="sec-h">硬件 &amp; 固件规格</h2>
+    <p class="sec-sub">均为真实参数（来源：源码 <code>app_types.h</code> 与默认配置）。</p>
+
+    <table class="spec">
+      <tr><th>主控</th><td>ESP32-C3 (RISC-V 单核) · 4 MB Flash · 无 PSRAM</td></tr>
+      <tr><th>屏幕</th><td>1.28 寸 ST7789 SPI · 240×240 · RGB565 全彩</td></tr>
+      <tr><th>联网</th><td>2.4 GHz Wi-Fi · STA / AP 双模式</td></tr>
+      <tr><th>固件版本</th><td>v1.0.2（2026-09 当前构建）</td></tr>
+      <tr><th>自选容量</th><td>最多 8 项（A 股 / ETF / 指数 / 港股 / 美股 / 黄金 / 场外基金）</td></tr>
+      <tr><th>主题数</th><td>5 套（列表 / 大图 / 放大列表 / 热搜 / 详情）</td></tr>
+      <tr><th>K 线</th><td>每只 30 根历史日 K + 交易时段追加 1 根实时柱（屏上最多 31 列）</td></tr>
+      <tr><th>数据源</th><td>腾讯行情 qt.gtimg.cn · 新浪日 K（A 股 / 指数 / ETF + 美股 · 港股）· 东财基金净值 · B 站实时热搜</td></tr>
+      <tr><th>K 线 / 基金代理</th><td>本机 <code>kline_proxy.py</code>（终结 TLS + 裁剪大数据），设备到主机走 HTTP:80</td></tr>
+      <tr><th>刷新间隔</th><td>1–60 秒可调（网页滑块）</td></tr>
+      <tr><th>滚动间隔</th><td>0.5–60 秒可调（4 个主题共用同一设置）</td></tr>
+      <tr><th>亮度</th><td>1–100 可调（网页滑块，保存即生效）</td></tr>
+      <tr><th>校时</th><td>SNTP 自动校时 · HTTP-Date 兜底</td></tr>
+      <tr><th>升级</th><td>网页 OTA · A/B 双分区 · 启动崩溃自动回滚（防砖）</td></tr>
+      <tr><th>配网</th><td>未配网时开 <code>INFO-DISPLAY</code> AP 热点，手机连上即配</td></tr>
+      <tr><th>局域网安全</th><td>写接口（配置提交 / OTA / 激活）需 <code>X-Token</code> 头；首次配网模式与读接口免鉴权</td></tr>
+      <tr><th>激活</th><td>每台随货附激活码 · 离线校验无需服务器 · 8 只自选全功能</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== Flash ===== -->
+<section id="flash">
+  <div class="sec-inner">
+    <h2 class="sec-h">在线烧录</h2>
+    <p class="sec-sub">Chrome / Edge 浏览器直接刷写，无需安装任何工具。本页由 GitHub Pages 提供 HTTPS，打开即可烧。</p>
+
+    <div class="banner">
+      <div>
+        <h3>把设备插上 USB，浏览器点一下就能刷</h3>
+        <p>首次需安装 CH340 / CP210x 驱动；按住 BOOT 键进下载模式后点页面按钮，约 30–60 秒完成。</p>
+      </div>
+      <a class="btn btn-primary" href="flash/index.html">打开烧录页 →</a>
+    </div>
+
+    <div class="grid-3" style="margin-top: 28px;">
+      <div class="card">
+        <h3 class="card-h">需要准备</h3>
+        <ul>
+          <li>ESP32-C3 开发板 × 1</li>
+          <li>USB 数据线 × 1（数据线，不是纯充电线）</li>
+          <li>Chrome / Edge 浏览器（Win / macOS / Android）</li>
+          <li>CH340 或 CP210x 串口驱动</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="card-h">不支持的</h3>
+        <ul>
+          <li class="no">Safari / Firefox（不支持 Web Serial API）</li>
+          <li class="no">iOS（系统限制，无串口访问）</li>
+          <li class="no"><code>file://</code> 双击打开（Web Serial 仅允许 https / localhost）</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 class="card-h">失败排查</h3>
+        <ul>
+          <li>找不到串口 → 关掉其他占用 COM 的程序（串口助手 / 旧烧录页签）</li>
+          <li>停在「连接中」→ 重做一次 BOOT 进下载模式</li>
+          <li>烧录失败 → 检查驱动是否安装正确</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== How to buy（只引导询价，不标价） ===== -->
+<section id="buy" class="sec-bg-alt">
+  <div class="sec-inner">
+    <h2 class="sec-h">怎么买</h2>
+    <p class="sec-sub">裸板 / 带壳整机 / 批量，配置和数量不同方案不同——直接私聊说明用途，我按你的情况配。</p>
+
+    <div class="banner">
+      <div>
+        <h3>私聊询价 · 按用途给你配方案</h3>
+        <p>每台售出均附激活码（8 只全功能）。告诉我三件事：<b>自己玩还是公司用</b> / <b>要几台</b> / <b>要不要带硬件</b>，我给你配对一版合适的。</p>
+      </div>
+      <a class="btn btn-primary" href="#contact">获取联系方式 →</a>
+    </div>
+
+    <div class="grid-3" style="margin-top: 28px;">
+      <div class="card">
+        <h3 class="card-h">裸板</h3>
+        <p>板和屏，自己装机 / 3D 打印外壳。适合爱折腾、想塞进自己壳子里的玩家。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">带壳整机</h3>
+        <p>装好壳、贴好膜、预装配置好，插电即用。适合送礼、公司摆工位、不想折腾的人。</p>
+      </div>
+      <div class="card">
+        <h3 class="card-h">批量 / 定制</h3>
+        <p>多台可走渠道政策；也可按需求定制主题、自选预置、外壳丝印等。</p>
+      </div>
+    </div>
+
+    <div class="contact-card" id="contact">
+      <img src="assets/wechat_qr.png" alt="微信二维码 扫码询价" class="qr">
+      <div>
+        <h3>扫码加微信 · 一对一询价</h3>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Get started ===== -->
+<section id="start">
+  <div class="sec-inner">
+    <h2 class="sec-h">快速上手（4 步）</h2>
+    <p class="sec-sub">设备到手固件已预装、激活码随货附，插电就能跑。</p>
+
+    <div class="steps">
+      <div class="step">
+        <div>
+          <h4>插上 USB / Type-C 供电</h4>
+          <p>插上电源屏幕即亮。首次上电如果未配过网，会自动开 <code>INFO-DISPLAY</code> 热点。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h4>手机 / 电脑连热点或同 Wi-Fi</h4>
+          <p>连上 <code>INFO-DISPLAY</code> 热点，浏览器会自动弹出配网页，填家里 Wi-Fi 即可；配好后设备加入家庭 Wi-Fi，在浏览器输入设备 IP（路由器后台可查）也能进配网页。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h4>网页里填自选 / 主题 / 亮度</h4>
+          <p>一行填一个代码（前缀 <code>sh</code>/<code>sz</code>/<code>hk</code>/<code>us</code>/<code>jj</code>/<code>hf</code>），保存即生效。带 <code>+</code>/<code>-</code> 前缀可设涨跌阈值；顺手把随货的激活码填进激活框，解锁 8 只全功能。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <h4>看盘 / OTA / 开发调试</h4>
+          <p>升级新版固件直接在网页点 OTA 推送；开发者可在 <code>/tools</code> 页实时调日志等级、查看设备状态。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section id="faq" class="sec-bg-alt">
+  <div class="sec-inner">
+    <h2 class="sec-h">常见疑问</h2>
+
+    <div class="faq-item">
+      <p class="faq-q">数据准吗？有没有服务器中转？</p>
+      <p class="faq-a">行情直接从公开接口拉取（腾讯 <code>qt.gtimg.cn</code>、新浪、东财、B 站），设备 ↔ 主机 ↔ 上游，全程无自建服务器、无中转。A 股 / ETF / 指数 / 港股 / 美股与同花顺 / 东财一致；美股 K 线因新浪固定返回全量历史，由本机 <code>kline_proxy.py</code> 终结 TLS 并裁剪成 30 根喂回设备。</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">要不要自己装 Python / 环境？</p>
+      <p class="faq-a">不需要。设备端纯固件运行；网页烧录纯浏览器；只有美股 / 港股 K 线（且你想要这俩标的）才需要在本机跑 <code>kline_proxy.py</code>——A 股 / 基金 / 指数 / ETF 不需要代理。</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">激活码怎么来的？换设备或丢了怎么办？</p>
+      <p class="faq-a">每台售出随货附激活码，在网页输入即解锁 8 只全功能。激活码由本机离线算法生成校验（设备码 = MAC + CRC16，配置页直接显示），<b>不依赖服务器、不需要联网</b>。换设备或激活码丢失，凭设备码补发即可。</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">为什么 Safari / Firefox 不能烧录？</p>
+      <p class="faq-a">浏览器厂商对 Web Serial API（用于直接访问 USB 串口）的支持不同：Chrome / Edge / Opera 全平台支持（Win / macOS / Linux / Android），Safari / Firefox 至今未实现。临时方案：换台电脑用 Chrome，或在 macOS 上用 Edge。</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">OTA 升级会不会变砖？</p>
+      <p class="faq-a">A/B 双分区设计：新固件写到另一分区，重启从新分区跑一次，跑通了就标记新分区有效；跑挂了（首轮无法联网取数）下次自动回滚到旧版本。除非你硬把电源拔在新固件的关键初始化阶段，否则不会变砖。</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">闲置多久会掉线？</p>
+      <p class="faq-a">设备 Wi-Fi 一直保持连接（默认不进入省电模式），闲置不会主动断网。SNTP 定期校时保证时钟准。</p>
+    </div>
+    <div class="faq-item">
+      <p class="faq-q">屏幕能换吗？尺寸有别的吗？</p>
+      <p class="faq-a">当前固件只适配 240×240 ST7789 SPI 屏（1.28 寸圆角 / 1.54 寸方形均可）。换屏需改驱动引脚与分辨率宏并重新编译烧录，属于定制开发范畴，私聊详谈。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== Disclaimer + Foot ===== -->
+<footer class="foot">
+  <div class="foot-inner">
+    <p>本设备仅作为信息显示终端，<strong style="color:var(--accent-2);">所有行情数据来自公开接口，仅供参考，不构成任何投资建议</strong>。投资有风险，决策需谨慎。</p>
+    <p>主视觉与主题展示图为 2026-09-02 真实收盘数据快照渲染，非实时画面。</p>
+    <div class="sep"></div>
+    <p>购买咨询 · <a href="#contact">扫码加微信（见「怎么买」区块）</a> —— 报价一对一沟通</p>
+    <p style="margin-top:18px; opacity:0.6;">© ESP32-C3 信息显示器 · 固件 v1.0.2 · 文档最后更新 2026-09</p>
+  </div>
+</footer>
+
+</body>
+</html>

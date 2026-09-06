@@ -1,0 +1,10 @@
+# ===== 旧脏残留（不入仓库）=====
+esp-web-tools/
+esp-web-tools.bak/
+
+# ===== 工作记忆 / 系统文件 =====
+.workbuddy/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp

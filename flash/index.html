@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32-C3 信息显示器 · 在线烧录</title>
+  <meta name="description" content="Chrome / Edge 浏览器一键烧录 ESP32-C3 信息显示器固件，无需安装任何工具。">
+  <meta name="theme-color" content="#0d1117">
+  <script type="module" src="ewt/install-button.js"></script>
+  <style>
+    :root {
+      --bg: #0d1117; --card: #161b22; --card2: #1c2128;
+      --border: #30363d; --text: #e6edf3; --dim: #7d8590;
+      --accent: #58a6ff; --warn: #f78166; --ok: #3fb950; --bad: #ff7b72;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 32px 20px 64px;
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Microsoft YaHei", "Noto Sans CJK SC", Helvetica, Arial, sans-serif;
+      line-height: 1.7; font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    a { color: var(--accent); }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    .sub { color: var(--dim); margin: 0 0 24px; font-size: 14px; }
+    .back { display: inline-block; margin-bottom: 18px; font-size: 14px; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+
+    /* 环境自检 */
+    .env {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 20px; background: var(--card); margin-bottom: 20px;
+    }
+    .env.ok  { border-color: rgba(63,185,80,.5);  background: rgba(63,185,80,.06); }
+    .env.bad { border-color: rgba(255,123,114,.5); background: rgba(255,123,114,.06); }
+    .env-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 14px; }
+    .badge {
+      font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .badge.ok  { background: rgba(63,185,80,.18); color: var(--ok); }
+    .badge.bad { background: rgba(255,123,114,.18); color: var(--bad); }
+    .badge.wait{ background: var(--card2); color: var(--dim); }
+    .hint { margin: 12px 0 0; font-size: 13px; color: var(--dim); }
+    .env.bad .hint { color: var(--bad); }
+
+    /* 烧录盒 */
+    .box {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 22px 24px; background: var(--card); margin-bottom: 20px;
+    }
+    .box h2 { font-size: 16px; margin: 0 0 12px; }
+    esp-web-install-button { display: block; }
+    button[slot="activate"] {
+      cursor: pointer; font-size: 15px; font-weight: 600;
+      padding: 12px 26px; color: #0d1117; background: var(--accent);
+      border: none; border-radius: 8px; font-family: inherit;
+    }
+    button[slot="activate"]:hover { background: #79c0ff; }
+    .slot-msg { display: block; margin-top: 12px; font-size: 13px; color: var(--bad); }
+
+    /* 步骤 */
+    ol.steps { padding-left: 22px; margin: 12px 0 0; }
+    ol.steps li { margin: 14px 0; }
+    .note { font-size: 13px; color: var(--dim); }
+    .warn { color: var(--warn); }
+    code {
+      font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+      background: var(--card2); padding: 1px 6px; border-radius: 4px; font-size: .9em;
+    }
+    ul.tight { margin: 8px 0 0; padding-left: 20px; }
+    ul.tight li { margin: 6px 0; font-size: 14px; color: var(--dim); }
+    hr { border: 0; border-top: 1px dashed var(--border); margin: 24px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="../index.html">← 返回产品页</a>
+    <h1>在线烧录</h1>
+    <p class="sub">用 Chrome / Edge 浏览器直接刷写固件，无需安装任何工具。</p>
+
+    <!-- ===== 环境自检 ===== -->
+    <div id="env" class="env">
+      <div class="env-row">
+        <span id="s-ctx" class="badge wait">检测中…</span>
+        <span>访问方式（需 <code>https://</code> 或 <code>localhost</code>）</span>
+      </div>
+      <div class="env-row">
+        <span id="s-serial" class="badge wait">检测中…</span>
+        <span>浏览器 Web Serial 支持（Chrome / Edge）</span>
+      </div>
+      <p id="env-hint" class="hint"></p>
+    </div>
+
+    <!-- ===== 烧录按钮 ===== -->
+    <div class="box">
+      <h2>一键烧录</h2>
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate">连接设备并烧录</button>
+        <span class="slot-msg" slot="unsupported">
+          当前浏览器不支持网页烧录。请换用 Chrome 或 Edge（Safari / Firefox 不支持 Web Serial API）。
+        </span>
+        <span class="slot-msg" slot="not-allowed">
+          当前不是 HTTPS / localhost 访问，浏览器已禁用烧录功能。
+          通过局域网 IP（如 http://192.168.x.x）打开会出现此提示，请改用 https 地址或 localhost。
+        </span>
+      </esp-web-install-button>
+      <p class="note" style="margin-top:14px;">
+        固件 v1.0.2（3.4 MB，含 bootloader + 应用 + 字库）。烧录约 30–60 秒，期间不要拔线。
+      </p>
+    </div>
+
+    <!-- ===== 操作步骤 ===== -->
+    <div class="box">
+      <h2>操作步骤</h2>
+      <ol class="steps">
+        <li>
+          <b>装串口驱动</b>：用 USB 数据线连接设备与电脑，确保已安装
+          <a href="https://www.wch.cn/downloads/CH34x_Install_Windows.html" target="_blank" rel="noopener">CH340 驱动</a>
+          或 CP210x 驱动。装好后「设备管理器」里能看到一个 COM 口即正常。
+        </li>
+        <li>
+          <b>关掉占用串口的软件</b>：<span class="warn">务必先关闭</span>串口助手、Arduino 串口监视器、
+          以及之前没关的烧录标签页。端口被占用时，浏览器会打开失败、表现为「点了没反应」。
+        </li>
+        <li>
+          <b>手动进入下载模式</b>（本板无自动下载电路，必须做）：
+          <b>按住 BOOT 键不放</b> → 点一下 <b>EN / RESET 键</b>后松开 → 再松开 BOOT。
+          若板子只有 BOOT 没有 EN 键：<b>一直按住 BOOT 再插 USB</b>。
+        </li>
+        <li>
+          <b>开始烧录</b>：点上方「连接设备并烧录」→ 弹窗里选设备的串口号 → 点「连接」→ 再点「安装」。
+          进度显示在页面上，出现进度后即可松开 BOOT 键。
+        </li>
+      </ol>
+    </div>
+
+    <!-- ===== 排查 ===== -->
+    <div class="box">
+      <h2>失败排查</h2>
+      <ul class="tight">
+        <li>长时间停在「连接中 / 找不到设备」→ 设备没进下载模式。关闭本标签页释放端口 → 重做第 3 步 → 重新连接。</li>
+        <li>找不到串口 / 串口列表为空 → 驱动未装好，或数据线是纯充电线（不带数据）。</li>
+        <li>浏览器一直占用 COM 口 → <b>关闭本标签页</b>才会释放。</li>
+        <li>上方自检出现红色 ✗ → 按红字提示处理（换浏览器 / 换 https 地址）。</li>
+      </ul>
+      <hr>
+      <p class="note">
+        浏览器支持：Chrome / Edge / Opera（Windows、macOS、Linux、Android 均可用）。
+        Safari、Firefox <b>不支持</b>；iOS 因系统限制无串口访问。
+        本页必须通过 <code>https://</code> 或 <code>localhost</code> 打开，双击本地 HTML 文件（<code>file://</code>）无法烧录。
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // 环境自检：把 ESP Web Tools 的两道硬门槛显式呈现出来，避免"按钮不见/没反应"的困惑
+    (function () {
+      var okCtx = !!window.isSecureContext;
+      var okSerial = ('serial' in navigator);
+
+      function set(id, ok, goodText, badText) {
+        var el = document.getElementById(id);
+        el.className = 'badge ' + (ok ? 'ok' : 'bad');
+        el.textContent = (ok ? '✓ ' : '✗ ') + (ok ? goodText : badText);
+      }
+      set('s-ctx', okCtx, '安全上下文正常', '非 HTTPS / 非 localhost');
+      set('s-serial', okSerial, '支持 Web Serial', '浏览器不支持');
+
+      var env = document.getElementById('env');
+      var hint = document.getElementById('env-hint');
+      if (okCtx && okSerial) {
+        env.className = 'env ok';
+        hint.textContent = '环境检测通过，按下方步骤操作即可烧录。';
+      } else {
+        env.className = 'env bad';
+        var msg = [];
+        if (!okCtx) msg.push('必须通过 https:// 或 localhost 打开（局域网 IP 如 http://192.168.x.x 会被浏览器禁用）');
+        if (!okSerial) msg.push('必须换用 Chrome 或 Edge 浏览器（Safari / Firefox 不支持 Web Serial）');
+        hint.textContent = '当前环境无法烧录：' + msg.join('；') + '。';
+      }
+    })();
+  </script>
+</body>
+</html>
