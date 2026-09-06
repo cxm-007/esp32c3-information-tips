@@ -368,23 +368,11 @@
       </div>
       <div class="card">
         <h3 class="card-h">AP 配网 <span class="tag tag-acc">无屏也能配</span></h3>
-        <p>首次上电未配过网，设备自己开 <code>INFO-DISPLAY</code> 热点，手机连上即弹出配网页；也可通过长按 BOOT 重置。</p>
-      </div>
-      <div class="card">
-        <h3 class="card-h">随货附激活码 <span class="tag tag-acc">全功能</span></h3>
-        <p>每台售出均附激活码，网页输入即解锁 8 只自选全功能。激活码本机离线算法校验，不依赖服务器。</p>
+        <p>首次上电未配过网，设备自己开 <code>INFO-DISPLAY</code> 热点，手机连上即弹出配网页。</p>
       </div>
       <div class="card">
         <h3 class="card-h">自动校时 <span class="tag tag-acc">免配置</span></h3>
         <p>联网后自动 SNTP 校时，断网兜底用上游 HTTP 响应头 Date 取时间，时钟不用手动调。</p>
-      </div>
-      <div class="card">
-        <h3 class="card-h">局域网鉴权 <span class="tag tag-acc">防蹭改</span></h3>
-        <p>配置提交 / OTA 推送 / 激活等写接口需带 <code>X-Token</code> 头（首次配网模式与读接口免鉴权），避免邻居蹭网乱改你的自选。</p>
-      </div>
-      <div class="card">
-        <h3 class="card-h">开发工具页 <span class="tag tag-acc">/tools</span></h3>
-        <p>实时调日志等级（ERROR / WARN / INFO / DEBUG / VERBOSE）、查看运行状态、抓包调试，不用重新烧固件。</p>
       </div>
     </div>
   </div>
@@ -412,8 +400,6 @@
       <tr><th>校时</th><td>SNTP 自动校时 · HTTP-Date 兜底</td></tr>
       <tr><th>升级</th><td>网页 OTA · A/B 双分区 · 启动崩溃自动回滚（防砖）</td></tr>
       <tr><th>配网</th><td>未配网时开 <code>INFO-DISPLAY</code> AP 热点，手机连上即配</td></tr>
-      <tr><th>局域网安全</th><td>写接口（配置提交 / OTA / 激活）需 <code>X-Token</code> 头；首次配网模式与读接口免鉴权</td></tr>
-      <tr><th>激活</th><td>每台随货附激活码 · 离线校验无需服务器 · 8 只自选全功能</td></tr>
     </table>
   </div>
 </section>
@@ -422,7 +408,7 @@
 <section id="flash">
   <div class="sec-inner">
     <h2 class="sec-h">在线烧录</h2>
-    <p class="sec-sub">Chrome / Edge 浏览器直接刷写，无需安装任何工具。本页由 GitHub Pages 提供 HTTPS，打开即可烧。</p>
+    <p class="sec-sub">Chrome / Edge 浏览器直接刷写，无需安装任何工具,打开即可烧。</p>
 
     <div class="banner">
       <div>
@@ -478,12 +464,12 @@
 
     <div class="grid-3" style="margin-top: 28px;">
       <div class="card">
-        <h3 class="card-h">裸板</h3>
-        <p>板和屏，自己装机 / 3D 打印外壳。适合爱折腾、想塞进自己壳子里的玩家。</p>
+        <h3 class="card-h">软件</h3>
+        <p>提供软件，玩家自己准备硬件 / 3D 打印外壳。适合爱折腾玩家。</p>
       </div>
       <div class="card">
         <h3 class="card-h">带壳整机</h3>
-        <p>装好壳、贴好膜、预装配置好，插电即用。适合送礼、公司摆工位、不想折腾的人。</p>
+        <p>装好壳、预装配置好，插电即用。适合不想折腾的人。</p>
       </div>
       <div class="card">
         <h3 class="card-h">批量 / 定制</h3>
@@ -527,8 +513,8 @@
       </div>
       <div class="step">
         <div>
-          <h4>看盘 / OTA / 开发调试</h4>
-          <p>升级新版固件直接在网页点 OTA 推送；开发者可在 <code>/tools</code> 页实时调日志等级、查看设备状态。</p>
+          <h4>看盘 / OTA </h4>
+          <p>升级新版固件直接在网页点 OTA 推送。</p>
         </div>
       </div>
     </div>
@@ -550,7 +536,7 @@
     </div>
     <div class="faq-item">
       <p class="faq-q">激活码怎么来的？换设备或丢了怎么办？</p>
-      <p class="faq-a">每台售出随货附激活码，在网页输入即解锁 8 只全功能。激活码由本机离线算法生成校验（设备码 = MAC + CRC16，配置页直接显示），<b>不依赖服务器、不需要联网</b>。换设备或激活码丢失，凭设备码补发即可。</p>
+      <p class="faq-a">每台售出随货附激活码，在网页输入即解锁 8 只全功能。换设备或激活码丢失，凭设备码补发即可。</p>
     </div>
     <div class="faq-item">
       <p class="faq-q">为什么 Safari / Firefox 不能烧录？</p>
